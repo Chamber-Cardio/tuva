@@ -9,17 +9,7 @@ with union_measures as (
     {{ dbt_utils.union_relations(
 
         relations=[
-              ref('quality_measures__int_nqf2372_long')
-            , ref('quality_measures__int_nqf0034_long')
-            , ref('quality_measures__int_nqf0059_long')
-            , ref('quality_measures__int_cqm236_long')
-            , ref('quality_measures__int_nqf0053_long')
-            , ref('quality_measures__int_cbe0055_long')
-            , ref('quality_measures__int_nqf0097_long')
-            , ref('quality_measures__int_cqm438_long')
-            , ref('quality_measures__int_nqf0041_long')
-            , ref('quality_measures__int_cbe0101_long')
-            , ref('quality_measures__int_cqm48_long')
+              ref('quality_measures__int_cqm438_long')
             , ref('quality_measures__int_cqm130_long')
             , ref('quality_measures__int_nqf0420_long')
             , ref('quality_measures__int_adh_diabetes_long')
@@ -34,7 +24,7 @@ with union_measures as (
 
 , patient as (
 
-    select distinct patient_id
+    select distinct person_id
     from {{ ref('quality_measures__stg_core__patient') }}
 
 )
@@ -43,7 +33,7 @@ with union_measures as (
 , joined as (
 
     select distinct
-          patient.patient_id
+          patient.person_id
         , union_measures.denominator_flag
         , union_measures.numerator_flag
         , union_measures.exclusion_flag
@@ -63,14 +53,14 @@ with union_measures as (
         , union_measures.measure_name
         , union_measures.measure_version
     from patient
-        left join union_measures
-            on patient.patient_id = union_measures.patient_id
+        left outer join union_measures
+            on patient.person_id = union_measures.person_id
 )
 
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(denominator_flag as integer) as denominator_flag
         , cast(numerator_flag as integer) as numerator_flag
         , cast(exclusion_flag as integer) as exclusion_flag
@@ -89,7 +79,7 @@ with union_measures as (
 )
 
 select
-      patient_id
+      person_id
     , denominator_flag
     , numerator_flag
     , exclusion_flag
@@ -103,5 +93,5 @@ select
     , measure_id
     , measure_name
     , measure_version
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

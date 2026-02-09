@@ -1,13 +1,24 @@
 {{ config(
-     enabled = var('claims_enabled',var('clinical_enabled',var('tuva_marts_enabled',False))) | as_bool
+     enabled = var('claims_enabled',var('clinical_enabled',var('tuva_marts_enabled',False)))
+ | as_bool
    )
 }}
 
 {% if var('clinical_enabled', var('tuva_marts_enabled',False)) == true and var('claims_enabled', var('tuva_marts_enabled',False)) == true -%}
-
-select * from {{ ref('core__stg_claims_patient') }}
+with person_list_to_exclude_because_in_claims as (
+    select distinct person_id
+    from {{ ref('core__stg_claims_patient') }}
+)
+select *
+from {{ ref('core__stg_claims_patient') }}
 union all
-select * from {{ ref('core__stg_clinical_patient') }}
+select cscp.*
+from {{ ref('core__stg_clinical_patient') }} as cscp
+-- TODO: Doesn't take into account claims coming from separate payers
+left outer join person_list_to_exclude_because_in_claims as pltebic
+    on cscp.person_id = pltebic.person_id
+/* IF EXISTS IN CLAIMS, CHOOSE CLAIMS RECORD OVER CLINICAL RECORD */
+where pltebic.person_id is null
 
 {% elif var('clinical_enabled', var('tuva_marts_enabled',False)) == true -%}
 
@@ -18,5 +29,3 @@ select * from {{ ref('core__stg_clinical_patient') }}
 select * from {{ ref('core__stg_claims_patient') }}
 
 {%- endif %}
-
-

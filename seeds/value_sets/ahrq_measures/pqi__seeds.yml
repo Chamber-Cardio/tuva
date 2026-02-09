@@ -24,9 +24,9 @@ seeds:
         description: Name of the value set
       - name: pqi_number
         description: Number of the PQI measure
-        meta:
-          terminology: https://github.com/tuva-health/the_tuva_project/blob/main/seeds/value_sets/ahrq_measures/pqi__measures.csv
-
+        config:
+          meta:
+            terminology: https://thetuvaproject.com/value-sets/ahrq-measures#measures
   - name: pqi__measures
     description: Names and descriptions of each of the PQI measures
     config:

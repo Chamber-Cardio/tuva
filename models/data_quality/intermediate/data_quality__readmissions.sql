@@ -1,5 +1,5 @@
 {{ config(
-     enabled = var('claims_enabled', var('tuva_marts_enabled', False)) | as_bool
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
 )}}
 
 
@@ -12,12 +12,13 @@ with disqualified_unpivot as (
         value_name='flagvalue',
         remove=[
     'encounter_id',
-    'patient_id',
+    'person_id',
     'admit_date',
     'discharge_date',
     'discharge_disposition_code',
     'facility_id',
-    'ms_drg_code',
+    'drg_code_type',
+    'drg_code',
     'paid_amount',
     'length_of_stay',
     'index_admission_flag',
@@ -33,9 +34,9 @@ with disqualified_unpivot as (
 
 -- Using the transformed data to perform aggregation
 select 
-    {{ dbt.concat(["'inpatient encounter '", "d.disqualified_reason"]) }} as data_quality_check
+    {{ concat_custom(["'inpatient encounter '", "d.disqualified_reason"]) }} as data_quality_check
     ,  count(distinct encounter_id) as result_count
-      , '{{ var('tuva_last_run') }}' as tuva_last_run
+      , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from disqualified_unpivot d
 where cast(flagvalue as {{ dbt.type_int() }} ) = 1  
 group by disqualified_reason

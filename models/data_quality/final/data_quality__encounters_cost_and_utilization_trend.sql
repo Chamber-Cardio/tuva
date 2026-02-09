@@ -1,6 +1,6 @@
 {{ config(
-    enabled = var('claims_enabled', var('tuva_marts_enabled', false)) | as_bool
-) }}
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
+)}}
 
 with member_months as (
     select
@@ -45,6 +45,6 @@ select
   , pkpy_trend.encounter_type
   , pkpy_trend.pkpy
   , pkpy_trend.paid_per
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from pkpy_trend
 

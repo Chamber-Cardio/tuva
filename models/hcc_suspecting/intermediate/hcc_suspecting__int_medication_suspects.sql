@@ -6,7 +6,8 @@
 with all_medications as (
 
     select
-          patient_id
+          person_id
+        , payer
         , dispensing_date
         , drug_code
         , code_system
@@ -30,6 +31,7 @@ with all_medications as (
     select distinct
           hcc_code
         , hcc_description
+        , 'CMS-HCC-V28' as model_version
     from {{ ref('hcc_suspecting__hcc_descriptions') }}
 
 )
@@ -37,8 +39,10 @@ with all_medications as (
 , billed_hccs as (
 
     select distinct
-          patient_id
+          person_id
+        , payer
         , data_source
+        , model_version
         , hcc_code
         , current_year_billed
     from {{ ref('hcc_suspecting__int_patient_hcc_history') }}
@@ -52,26 +56,28 @@ with all_medications as (
 , hcc_155_suspect as (
 
     select
-          all_medications.patient_id
+          all_medications.person_id
+        , all_medications.payer
         , all_medications.dispensing_date
         , all_medications.drug_code
         , all_medications.code_system
         , all_medications.data_source
         , seed_clinical_concepts.concept_name
+        , seed_hcc_descriptions.model_version
         , seed_hcc_descriptions.hcc_code
         , seed_hcc_descriptions.hcc_description
     from all_medications
         inner join seed_clinical_concepts
             on all_medications.code_system = seed_clinical_concepts.code_system
             and all_medications.drug_code = seed_clinical_concepts.code
-        inner join seed_hcc_descriptions
-            on hcc_code = '155'
+        cross join seed_hcc_descriptions
     where lower(seed_clinical_concepts.concept_name) = 'antidepressant medication'
-    and all_medications.dispensing_date >= {{ dbt.dateadd (
-              datepart = "year"
-            , interval = -5
-            , from_date_or_timestamp = dbt.current_timestamp()
-        ) }}
+        and all_medications.dispensing_date >= {{ dbt.dateadd (
+                datepart = "year"
+                , interval = -5
+                , from_date_or_timestamp = dbt.current_timestamp()
+            ) }}
+        and seed_hcc_descriptions.hcc_code = '155'
 
 )
 /* END HCC 155 logic */
@@ -85,8 +91,10 @@ with all_medications as (
 , add_billed_flag as (
 
     select
-          unioned.patient_id
+          unioned.person_id
+        , unioned.payer
         , unioned.data_source
+        , unioned.model_version
         , unioned.hcc_code
         , unioned.hcc_description
         , unioned.concept_name
@@ -94,24 +102,28 @@ with all_medications as (
         , unioned.drug_code
         , billed_hccs.current_year_billed
     from unioned
-        left join billed_hccs
-            on unioned.patient_id = billed_hccs.patient_id
+        left outer join billed_hccs
+            on unioned.person_id = billed_hccs.person_id
+            and unioned.payer = billed_hccs.payer
             and unioned.data_source = billed_hccs.data_source
             and unioned.hcc_code = billed_hccs.hcc_code
+            and unioned.model_version = billed_hccs.model_version
 )
 
 , add_standard_fields as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
+        , model_version
         , hcc_code
         , hcc_description
         , dispensing_date
         , drug_code
         , current_year_billed
         , cast('Medication suspect' as {{ dbt.type_string() }}) as reason
-        , {{ dbt.concat([
+        , {{ concat_custom([
             "concept_name",
             "drug_code",
             "') dispensed on '",
@@ -124,8 +136,10 @@ with all_medications as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
+        , cast(payer as {{ dbt.type_string() }}) as payer
         , cast(data_source as {{ dbt.type_string() }}) as data_source
+        , cast(model_version as {{ dbt.type_string() }}) as model_version
         , cast(hcc_code as {{ dbt.type_string() }}) as hcc_code
         , cast(hcc_description as {{ dbt.type_string() }}) as hcc_description
         , cast(dispensing_date as date) as dispensing_date
@@ -143,8 +157,10 @@ with all_medications as (
 )
 
 select
-      patient_id
+      person_id
+    , payer
     , data_source
+    , model_version
     , hcc_code
     , hcc_description
     , dispensing_date
@@ -153,5 +169,5 @@ select
     , reason
     , contributing_factor
     , suspect_date
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

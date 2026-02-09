@@ -6,15 +6,15 @@
 
 
 select
-      patient_id
-    , {{ dbt.concat([
-        "patient_id",
+      person_id
+    , {{ concat_custom([
+        "person_id",
         "coalesce(data_source,'')",
         "coalesce(payer,'')",
         "coalesce(" ~ quote_column('plan') ~ ",'')",
         "coalesce(cast(enrollment_start_date as " ~ dbt.type_string() ~ "),'')",
         "coalesce(cast(enrollment_end_date as " ~ dbt.type_string() ~ "),'')"
-    ]) }} as patient_id_key
+    ]) }} as person_id_key
     , member_id
     , subscriber_id
     , gender
@@ -31,7 +31,15 @@ select
     , original_reason_entitlement_code
     , dual_status_code
     , medicare_status_code
+    , enrollment_status
+    , hospice_flag
+    , institutional_snp_flag
+    , long_term_institutional_flag
+    , group_id
+    , group_name
+    , name_suffix
     , first_name
+    , middle_name
     , last_name
     , social_security_number
     , address
@@ -39,7 +47,10 @@ select
     , state
     , zip_code
     , phone
+    , email
+    , ethnicity
     , data_source
     , file_name
+    , file_date
     , ingest_datetime
-from {{ ref('eligibility') }}
+from {{ ref('input_layer__eligibility') }}

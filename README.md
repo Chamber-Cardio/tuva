@@ -1,4 +1,4 @@
-[![Apache License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![dbt logo and version](https://img.shields.io/static/v1?logo=dbt&label=dbt-version&message=1.2.x&color=orange)
+[![Apache License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![dbt logo and version](https://img.shields.io/static/v1?logo=dbt&label=dbt-version&message=1.9.x&color=orange)
 
 ![diagram](./the_tuva_project.jpg)
 
@@ -23,13 +23,14 @@ Check out our Quickstart guide [here](./QUICKSTART.md).
 
 ## 🔌  Supported Data Warehouses and dbt Versions
 - BigQuery
-- Databricks (community supported)
-- DuckDB (community supported)
+- Databricks
+- DuckDB
 - Redshift
 - Snowflake
+- Microsoft Fabric
 
 
-This package supports dbt version `1.3.x` or higher.
+This package supports dbt version `1.9.x` or higher.
 <br/><br/>
 
 ## 🙋🏻‍♀️ Contributing
@@ -42,5 +43,5 @@ Check out our Contribution guide [here](./CONTRIBUTING.md).
 <br/><br/>
 
 ## 🤝 Community
-Join our growing community of healthcare data people in [Slack](https://join.slack.com/t/thetuvaproject/shared_invite/zt-16iz61187-G522Mc2WGA2mHF57e0il0Q)!
+Join our growing community of healthcare data people in [Slack](https://join.slack.com/t/thetuvaproject/shared_invite/zt-35lhyb3as-moCo~~7A3el1oG1vSyIPHQ)!
 <br/><br/>

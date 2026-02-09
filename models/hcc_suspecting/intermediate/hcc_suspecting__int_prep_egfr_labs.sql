@@ -6,7 +6,8 @@
 with lab_result as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
         , code_type
         , code
@@ -31,7 +32,8 @@ with lab_result as (
 , egfr_labs as (
 
     select distinct
-          lab_result.patient_id
+          lab_result.person_id
+        , lab_result.payer
         , lab_result.data_source
         , lab_result.code_type
         , lab_result.code
@@ -49,12 +51,17 @@ with lab_result as (
 , numeric_egfr_labs as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
         , code_type
         , code
         , result_date
-        , cast(result as {{ dbt.type_numeric() }}) as result
+        {% if target.type == 'bigquery' %}
+         , safe_cast(result AS {{ dbt.type_numeric() }}) AS result
+        {% else %}
+        , try_cast(result as {{ dbt.type_numeric() }}) as result
+        {% endif %}
     from egfr_labs
    {% if target.type == 'fabric' %}
         WHERE result LIKE '%.%' OR result LIKE '%[0-9]%'
@@ -68,26 +75,38 @@ with lab_result as (
 , clean_non_numeric_egfr_labs as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
         , code_type
         , code
         , result_date
         , result
-        , cast(case
+        {% if target.type == 'bigquery' %}
+         , safe_cast(case
             when lower(result) like '%unsatisfactory specimen%' then null
             when result like '%>%' then null
             when result like '%<%' then null
-            when result like '%@%' then trim(replace(result,'@',''))
-            when result like '%mL/min/1.73m2%' then trim(replace(result,'mL/min/1.73m2',''))
+            when result like '%@%' then trim(replace(result, '@', ''))
+            when result like '%mL/min/1.73m2%' then trim(replace(result, 'mL/min/1.73m2', ''))
             else null
           end as {{ dbt.type_numeric() }}) as clean_result
+        {% else %}
+        , try_cast(case
+            when lower(result) like '%unsatisfactory specimen%' then null
+            when result like '%>%' then null
+            when result like '%<%' then null
+            when result like '%@%' then trim(replace(result, '@', ''))
+            when result like '%mL/min/1.73m2%' then trim(replace(result, 'mL/min/1.73m2', ''))
+            else null
+          end as {{ dbt.type_numeric() }}) as clean_result
+        {% endif %}
     from egfr_labs
     {% if target.type == 'fabric' %}
         WHERE NOT (result LIKE '%.%' OR result LIKE '%[0-9]%'
         AND result NOT LIKE '%[^0-9.]%')
     {% else %}
-        where {{ apply_regex('result', '^[+-]?([0-9]*[.])?[0-9]+$') }} = False
+        where {{ apply_regex('result', '^[+-]?([0-9]*[.])?[0-9]+$') }} = false
     {% endif %}
 
 )
@@ -95,7 +114,8 @@ with lab_result as (
 , unioned_labs as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
         , code_type
         , code
@@ -106,7 +126,8 @@ with lab_result as (
     union all
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
         , code_type
         , code
@@ -120,7 +141,8 @@ with lab_result as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
+        , cast(payer as {{ dbt.type_string() }}) as payer
         , cast(data_source as {{ dbt.type_string() }}) as data_source
         , cast(code_type as {{ dbt.type_string() }}) as code_type
         , cast(code as {{ dbt.type_string() }}) as code
@@ -131,11 +153,12 @@ with lab_result as (
 )
 
 select
-      patient_id
+      person_id
+    , payer
     , data_source
     , code_type
     , code
     , result_date
     , result
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

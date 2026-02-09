@@ -1,6 +1,6 @@
 {{ config(
-     enabled = var('claims_enabled', var('tuva_marts_enabled', False)) | as_bool
-) }}
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
+)}}
 
 with pharmacy as (
   select
@@ -8,7 +8,7 @@ with pharmacy as (
     , claim_line_number
     , data_source
     , count(*) as result_count
-  from {{ ref('pharmacy_claim') }} p
+  from {{ ref('input_layer__pharmacy_claim') }} p
   group by
       claim_id
     , claim_line_number
@@ -22,7 +22,7 @@ with pharmacy as (
     , claim_line_number
     , data_source
     , count(*) as result_count
-  from {{ ref('medical_claim') }} p
+  from {{ ref('input_layer__medical_claim') }} p
   group by
       claim_id
     , claim_line_number
@@ -32,15 +32,15 @@ with pharmacy as (
 
 , eligibility as (
   select
-      patient_id
+      person_id
     , enrollment_start_date
     , enrollment_end_date
     , {{ quote_column('plan') }}
     , data_source
     , count(*) as result_count
-  from {{ ref('eligibility') }} p
+  from {{ ref('input_layer__eligibility') }} p
   group by
-      patient_id
+      person_id
     , enrollment_start_date
     , enrollment_end_date
     , {{ quote_column('plan') }}
@@ -71,5 +71,5 @@ with pharmacy as (
 
 select
     *
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from final

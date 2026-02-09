@@ -1,4 +1,6 @@
-{{ config(enabled = var('claims_enabled', var('tuva_marts_enabled', false)) | as_bool) }}
+{{ config(
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
+)}}
 
 with member_months as (
     select
@@ -29,7 +31,7 @@ select
   , scat.service_category_2
   , scat.total_paid
   , scat.total_paid / mm.member_months as pmpm
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from service_categories as scat
 inner join member_months as mm
   on scat.year_month = mm.year_month

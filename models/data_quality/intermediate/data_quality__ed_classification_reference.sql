@@ -1,5 +1,5 @@
 {{ config(
-     enabled = var('claims_enabled', var('tuva_marts_enabled', False)) | as_bool
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
 )}}
 
 with total_cte as 
@@ -36,7 +36,7 @@ select m.analytics_concept
 ,data_source_value
 ,m.analytics_value
 ,m.value_rank
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('data_quality__reference_mart_analytics') }} m 
 left join actually_final on actually_final.analytics_measure = m.analytics_measure
 and

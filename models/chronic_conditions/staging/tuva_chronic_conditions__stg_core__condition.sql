@@ -3,9 +3,9 @@
    )
 }}
 
-select 
-      patient_id
+select
+      person_id
     , normalized_code
     , recorded_date
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
-from {{ ref('core__condition')}}
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
+from {{ ref('core__condition') }}

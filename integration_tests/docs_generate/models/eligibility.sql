@@ -1,5 +1,5 @@
 select
-      patient_id
+      person_id
     , member_id
     , subscriber_id
     , gender
@@ -15,7 +15,11 @@ select
     , original_reason_entitlement_code
     , dual_status_code
     , medicare_status_code
+    , group_id
+    , group_name
+    , name_suffix
     , first_name
+    , middle_name
     , last_name
     , social_security_number
     , subscriber_relation
@@ -24,7 +28,10 @@ select
     , state
     , zip_code
     , phone
+    , email
+    , ethnicity
     , data_source
     , file_name
+    , file_date
     , ingest_datetime
 from {{ ref('eligibility_seed') }}

@@ -6,7 +6,8 @@
 with medications as (
 
     select
-          patient_id
+          person_id
+        , 'clinical source' as payer
         , dispensing_date
         , source_code
         , source_code_type
@@ -20,7 +21,8 @@ with medications as (
 , pharmacy_claims as (
 
     select
-          patient_id
+          person_id
+        , payer
         , coalesce(dispensing_date, paid_date) as dispensing_date
         , ndc_code as drug_code
         , 'ndc' as code_system
@@ -32,7 +34,8 @@ with medications as (
 , ndc_medications as (
 
     select
-          patient_id
+          person_id
+        , payer
         , dispensing_date
         , ndc_code as drug_code
         , 'ndc' as code_system
@@ -43,7 +46,8 @@ with medications as (
     union all
 
     select
-          patient_id
+          person_id
+        , payer
         , dispensing_date
         , source_code as drug_code
         , 'ndc' as code_system
@@ -56,7 +60,8 @@ with medications as (
 , rxnorm_medications as (
 
     select
-          patient_id
+          person_id
+        , payer
         , dispensing_date
         , rxnorm_code as drug_code
         , 'rxnorm' as code_system
@@ -67,7 +72,8 @@ with medications as (
     union all
 
     select
-          patient_id
+          person_id
+        , payer
         , dispensing_date
         , source_code as drug_code
         , 'rxnorm' as code_system
@@ -90,7 +96,8 @@ with medications as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
+        , cast(payer as {{ dbt.type_string() }}) as payer
         , cast(dispensing_date as date) as dispensing_date
         , cast(drug_code as {{ dbt.type_string() }}) as drug_code
         , cast(code_system as {{ dbt.type_string() }}) as code_system
@@ -100,10 +107,11 @@ with medications as (
 )
 
 select
-      patient_id
+      person_id
+    , payer
     , dispensing_date
     , drug_code
     , code_system
     , data_source
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

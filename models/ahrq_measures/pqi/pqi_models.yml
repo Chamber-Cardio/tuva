@@ -17,7 +17,7 @@ models:
     columns:
       - name: year_number
         description: the year the patient qualified for the corresponding denominator
-      - name: patient_id
+      - name: person_id
         description: Unique identifier for each patient in the dataset.
       - name: data_source
         description: >
@@ -77,7 +77,7 @@ models:
         description: >
           User-configured field that indicates the data source (e.g. typically 
           named after the payer and state "BCBS Tennessee").
-      - name: patient_id
+      - name: person_id
         description: Unique identifier for each patient in the dataset.
       - name: year_number
         description: the year the patient qualified for the corresponding numerator
@@ -151,16 +151,16 @@ models:
           named after the payer and state "BCBS Tennessee").
       - name: year_number
         description: the year the patient qualified for the corresponding numerator
-      - name: patient_id
+      - name: person_id
         description: Unique identifier for each patient in the dataset.
       - name: facility_id
         description: >
           Facility ID for the encounter (typically represents the facility 
           where services were performed).      
-      - name: ms_drg_code
-        description: MS-DRG code for the encounter.
-      - name: ms_drg_description
-        description: Description of the ms_drg_code.
+      - name: drg_code
+        description: DRG code for the encounter.
+      - name: drg_description
+        description: Description of the drg_code.
       - name: encounter_start_date
         description: Date when the encounter started.
       - name: encounter_end_date

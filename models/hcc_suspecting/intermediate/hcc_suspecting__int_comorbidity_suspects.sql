@@ -6,7 +6,8 @@
 with conditions as (
 
     select
-          patient_id
+          person_id
+        , payer
         , recorded_date
         , condition_type
         , code_type
@@ -26,11 +27,13 @@ with conditions as (
 
 )
 
+-- TODO: Add support for multiple model versions
 , seed_hcc_descriptions as (
 
     select distinct
           hcc_code
         , hcc_description
+        , 'CMS-HCC-V28' as model_version
     from {{ ref('hcc_suspecting__hcc_descriptions') }}
 
 )
@@ -38,8 +41,10 @@ with conditions as (
 , billed_hccs as (
 
     select distinct
-          patient_id
+          person_id
+        , payer
         , data_source
+        , model_version
         , hcc_code
         , current_year_billed
     from {{ ref('hcc_suspecting__int_patient_hcc_history') }}
@@ -50,7 +55,8 @@ with conditions as (
 , ckd_stage_1_or_2 as (
 
     select
-          conditions.patient_id
+          conditions.person_id
+        , conditions.payer
         , conditions.recorded_date
         , conditions.condition_type
         , conditions.code_type
@@ -59,7 +65,8 @@ with conditions as (
         , seed_clinical_concepts.concept_name
         , row_number() over (
             partition by
-                  conditions.patient_id
+                  conditions.person_id
+                , conditions.payer
                 , conditions.data_source
             order by
                   conditions.recorded_date desc
@@ -79,7 +86,8 @@ with conditions as (
 , ckd_stage_1_or_2_dedupe as (
 
     select
-          patient_id
+          person_id
+        , payer
         , recorded_date
         , condition_type
         , code_type
@@ -94,7 +102,8 @@ with conditions as (
 , diabetes as (
 
     select
-          conditions.patient_id
+          conditions.person_id
+        , conditions.payer
         , conditions.recorded_date
         , conditions.condition_type
         , conditions.code_type
@@ -103,7 +112,8 @@ with conditions as (
         , seed_clinical_concepts.concept_name
         , row_number() over (
             partition by
-                  conditions.patient_id
+                  conditions.person_id
+                , conditions.payer
                 , conditions.data_source
             order by
                   conditions.recorded_date desc
@@ -119,7 +129,8 @@ with conditions as (
 , diabetes_dedupe as (
 
     select
-          patient_id
+          person_id
+        , payer
         , recorded_date
         , condition_type
         , code_type
@@ -134,8 +145,10 @@ with conditions as (
 , hcc_37_suspect as (
 
     select
-          diabetes_dedupe.patient_id
+          diabetes_dedupe.person_id
+        , diabetes_dedupe.payer
         , diabetes_dedupe.data_source
+        , seed_hcc_descriptions.model_version
         , seed_hcc_descriptions.hcc_code
         , seed_hcc_descriptions.hcc_description
         , diabetes_dedupe.concept_name as condition_1_concept_name
@@ -146,12 +159,13 @@ with conditions as (
         , ckd_stage_1_or_2_dedupe.recorded_date as condition_2_recorded_date
     from diabetes_dedupe
         inner join ckd_stage_1_or_2_dedupe
-            on diabetes_dedupe.patient_id = ckd_stage_1_or_2_dedupe.patient_id
+            on diabetes_dedupe.person_id = ckd_stage_1_or_2_dedupe.person_id
+            and diabetes_dedupe.payer = ckd_stage_1_or_2_dedupe.payer
             and diabetes_dedupe.data_source = ckd_stage_1_or_2_dedupe.data_source
             /* ensure conditions overlap in the same year */
             and {{ date_part('year', 'diabetes_dedupe.recorded_date') }} = {{ date_part('year', 'ckd_stage_1_or_2_dedupe.recorded_date') }}
-        inner join seed_hcc_descriptions
-            on hcc_code = '37'
+        cross join seed_hcc_descriptions
+        where seed_hcc_descriptions.hcc_code = '37'
 
 )
 /* END HCC 37 logic */
@@ -165,8 +179,10 @@ with conditions as (
 , add_billed_flag as (
 
     select
-          unioned.patient_id
+          unioned.person_id
+        , unioned.payer
         , unioned.data_source
+        , unioned.model_version
         , unioned.hcc_code
         , unioned.hcc_description
         , unioned.condition_1_concept_name
@@ -177,18 +193,22 @@ with conditions as (
         , unioned.condition_2_recorded_date
         , billed_hccs.current_year_billed
     from unioned
-        left join billed_hccs
-            on unioned.patient_id = billed_hccs.patient_id
+        left outer join billed_hccs
+            on unioned.person_id = billed_hccs.person_id
+            and unioned.payer = billed_hccs.payer
             and unioned.data_source = billed_hccs.data_source
             and unioned.hcc_code = billed_hccs.hcc_code
+            and unioned.model_version = billed_hccs.model_version
 
 )
 
 , add_standard_fields as (
 
     select
-          patient_id
+          person_id
+        , payer
         , data_source
+        , model_version
         , hcc_code
         , hcc_description
         , condition_1_concept_name
@@ -199,7 +219,7 @@ with conditions as (
         , condition_2_recorded_date
         , current_year_billed
         , cast('Comorbidity suspect' as {{ dbt.type_string() }}) as reason
-        , {{ dbt.concat([
+        , {{ concat_custom([
             "condition_1_concept_name",
             "' ('",
             "condition_1_code",
@@ -221,8 +241,10 @@ with conditions as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
+        , cast(payer as {{ dbt.type_string() }}) as payer
         , cast(data_source as {{ dbt.type_string() }}) as data_source
+        , cast(model_version as {{ dbt.type_string() }}) as model_version
         , cast(hcc_code as {{ dbt.type_string() }}) as hcc_code
         , cast(hcc_description as {{ dbt.type_string() }}) as hcc_description
         , cast(condition_1_concept_name as {{ dbt.type_string() }}) as condition_1_concept_name
@@ -244,8 +266,10 @@ with conditions as (
 )
 
 select
-      patient_id
+      person_id
+    , payer
     , data_source
+    , model_version
     , hcc_code
     , hcc_description
     , condition_1_concept_name
@@ -258,5 +282,5 @@ select
     , reason
     , contributing_factor
     , suspect_date
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

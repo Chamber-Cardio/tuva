@@ -24,15 +24,15 @@
 with denominator as (
 
     select
-          patient_id
-    from {{ ref('quality_measures__int_adhras_denominator')}}
+          person_id
+    from {{ ref('quality_measures__int_adhras_denominator') }}
 
 )
 
 , valid_hospice_palliative as (
 
     select
-        patient_id
+        person_id
       , exclusion_date
       , exclusion_reason
     from {{ ref('quality_measures__int_shared_exclusions_hospice_palliative') }}
@@ -57,12 +57,12 @@ with denominator as (
 , valid_esrd as (
 
     select
-          condition.patient_id
+          condition.person_id
         , condition.recorded_date as exclusion_date
         , codes.concept_name as exclusion_reason
     from {{ ref('quality_measures__stg_core__condition') }} as condition
-    inner join codes 
-      on coalesce(condition.normalized_code, condition.source_code) = codes.code 
+    inner join codes
+      on coalesce(condition.normalized_code, condition.source_code) = codes.code
         and coalesce(condition.normalized_code_type, condition.source_code_type) = codes.code_system
     where condition.recorded_date between {{ performance_period_begin }} and {{ performance_period_end }}
 
@@ -71,51 +71,51 @@ with denominator as (
 , sacubitril_pharmacy_claim as (
 
     select
-          pharmacy_claim.patient_id
+          pharmacy_claim.person_id
         , pharmacy_claim.dispensing_date as exclusion_date
         , codes.concept_name as exclusion_reason
     from {{ ref('quality_measures__stg_pharmacy_claim') }} as pharmacy_claim
     inner join codes
-      on pharmacy_claim.ndc_code = codes.code 
+      on pharmacy_claim.ndc_code = codes.code
     where pharmacy_claim.dispensing_date between {{ performance_period_begin }} and {{ performance_period_end }}
 
 )
 
 , exclusions as (
 
-    select 
-          patient_id
+    select
+          person_id
         , exclusion_date
         , exclusion_reason
     from valid_hospice_palliative
 
     union all
 
-    select 
-          patient_id
+    select
+          person_id
         , exclusion_date
         , exclusion_reason
     from valid_esrd
 
     union all
 
-    select 
-          patient_id
+    select
+          person_id
         , exclusion_date
-        , exclusion_reason 
+        , exclusion_reason
     from sacubitril_pharmacy_claim
 
 )
 
 , measure_exclusions as (
 
-    select 
-          exclusions.patient_id
+    select
+          exclusions.person_id
         , exclusion_date
         , exclusion_reason
     from exclusions
     inner join denominator
-      on exclusions.patient_id = denominator.patient_id
+      on exclusions.person_id = denominator.person_id
 
 )
 
@@ -123,7 +123,7 @@ with denominator as (
 
     select
         distinct
-            cast(patient_id as {{ dbt.type_string() }}) as patient_id
+            cast(person_id as {{ dbt.type_string() }}) as person_id
           , cast(exclusion_date as date) as exclusion_date
           , cast(exclusion_reason as {{ dbt.type_string() }}) as exclusion_reason
           , 1 as exclusion_flag
@@ -132,9 +132,9 @@ with denominator as (
 )
 
 select
-      patient_id
+      person_id
     , exclusion_date
     , exclusion_reason
     , exclusion_flag
-    , '{{ var('tuva_last_run')}}' as tuva_last_run 
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

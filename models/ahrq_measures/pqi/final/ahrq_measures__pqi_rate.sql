@@ -20,7 +20,7 @@ with num as (
         data_source
       , year_number
       , pqi_number
-      , count(patient_id) as denom_count
+      , count(person_id) as denom_count
     from {{ ref('ahrq_measures__pqi_denom_long') }} as d
     group by
         data_source
@@ -34,10 +34,10 @@ select
   , d.pqi_number
   , d.denom_count
   , coalesce(num.num_count, 0) as num_count
-  , coalesce(num.num_count, 0) / d.denom_count * 100000 as rate_per_100_thousand
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , coalesce(num.num_count, 0) * 1.0 / d.denom_count * 100000 as rate_per_100_thousand
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from denom as d
-left join num
+left outer join num
     on d.pqi_number = num.pqi_number
     and d.year_number = num.year_number
     and d.data_source = num.data_source

@@ -6,7 +6,7 @@
 with denominator as (
 
     select
-          patient_id
+          person_id
         , procedure_encounter_date
         , claims_encounter_date
         , performance_period_begin
@@ -25,7 +25,7 @@ with denominator as (
         , code_system
         , concept_name
     from {{ ref('quality_measures__value_sets') }}
-    where lower(concept_name) in  (
+    where lower(concept_name) in (
           'eligible clinician attests to documenting current medications'
     )
 
@@ -34,9 +34,9 @@ with denominator as (
 , procedures as (
 
     select
-        patient_id
+        person_id
       , procedure_date
-      , coalesce (
+      , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -44,7 +44,7 @@ with denominator as (
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -55,7 +55,7 @@ with denominator as (
 , documenting_meds_procedures as (
 
     select
-          patient_id
+          person_id
         , procedure_date
     from procedures
     inner join medication_code
@@ -67,9 +67,9 @@ with denominator as (
 , documenting_meds_claims as (
 
     select
-          patient_id
-        , coalesce(claim_end_date,claim_start_date) as encounter_date
-    from {{ ref('quality_measures__stg_medical_claim') }} medical_claim
+          person_id
+        , coalesce(claim_end_date, claim_start_date) as encounter_date
+    from {{ ref('quality_measures__stg_medical_claim') }} as medical_claim
     inner join medication_code
         on medical_claim.hcpcs_code = medication_code.code
           and medication_code.code_system = 'hcpcs'
@@ -78,8 +78,8 @@ with denominator as (
 
 , qualifying_procedure as (
 
-    select 
-          documenting_meds_procedures.patient_id
+    select
+          documenting_meds_procedures.person_id
         , documenting_meds_procedures.procedure_date as encounter_date
         , denominator.performance_period_begin
         , denominator.performance_period_end
@@ -88,15 +88,15 @@ with denominator as (
         , denominator.measure_version
     from documenting_meds_procedures
     inner join denominator
-      on documenting_meds_procedures.patient_id = denominator.patient_id
+      on documenting_meds_procedures.person_id = denominator.person_id
         and documenting_meds_procedures.procedure_date = denominator.procedure_encounter_date
 
 )
 
 , qualifying_claims as (
-    
-    select 
-          documenting_meds_claims.patient_id
+
+    select
+          documenting_meds_claims.person_id
         , documenting_meds_claims.encounter_date
         , denominator.performance_period_begin
         , denominator.performance_period_end
@@ -105,7 +105,7 @@ with denominator as (
         , denominator.measure_version
     from documenting_meds_claims
     inner join denominator
-      on documenting_meds_claims.patient_id = denominator.patient_id
+      on documenting_meds_claims.person_id = denominator.person_id
         and documenting_meds_claims.encounter_date = denominator.claims_encounter_date
 
 )
@@ -113,7 +113,7 @@ with denominator as (
 , qualifying_cares as (
 
     select
-          patient_id
+          person_id
         , encounter_date
         , performance_period_begin
         , performance_period_end
@@ -126,7 +126,7 @@ with denominator as (
     union all
 
     select
-          patient_id
+          person_id
         , encounter_date
         , performance_period_begin
         , performance_period_end
@@ -141,7 +141,7 @@ with denominator as (
 , add_data_types as (
 
      select distinct
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(performance_period_begin as date) as performance_period_begin
         , cast(performance_period_end as date) as performance_period_end
         , cast(measure_id as {{ dbt.type_string() }}) as measure_id
@@ -155,7 +155,7 @@ with denominator as (
 )
 
 select
-      patient_id
+      person_id
     , performance_period_begin
     , performance_period_end
     , measure_id
@@ -164,5 +164,5 @@ select
     , evidence_date
     , evidence_value
     , numerator_flag
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

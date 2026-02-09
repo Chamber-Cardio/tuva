@@ -6,21 +6,21 @@
 {% if var('clinical_enabled', var('tuva_marts_enabled',False)) == true and var('claims_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 select
-      patient_id
+      person_id
     , encounter_id
-    , prescribing_date  
+    , prescribing_date
     , dispensing_date
     , source_code_type
     , source_code
     , ndc_code
     , rxnorm_code
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__medication') }}
 
 {% elif var('clinical_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 select
-      patient_id
+      person_id
     , encounter_id
     , prescribing_date   
     , dispensing_date
@@ -28,14 +28,14 @@ select
     , source_code
     , ndc_code
     , rxnorm_code
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__medication') }}
 
 {% elif var('claims_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 {% if target.type == 'fabric' %}
     select top 0
-          cast(null as {{ dbt.type_string() }} ) as patient_id
+          cast(null as {{ dbt.type_string() }} ) as person_id
         , cast(null as {{ dbt.type_string() }} ) as encounter_id
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as prescribing_date
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as dispensing_date
@@ -46,7 +46,7 @@ from {{ ref('core__medication') }}
         , cast(null as {{ dbt.type_timestamp() }} ) as tuva_last_run
 {% else %}
 select
-          cast(null as {{ dbt.type_string() }} ) as patient_id
+          cast(null as {{ dbt.type_string() }} ) as person_id
         , cast(null as {{ dbt.type_string() }} ) as encounter_id
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as prescribing_date
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as dispensing_date

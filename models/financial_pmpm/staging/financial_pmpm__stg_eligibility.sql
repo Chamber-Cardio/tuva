@@ -4,11 +4,11 @@
 }}
 
 select
-    patient_id
+    person_id
     , enrollment_start_date
     , enrollment_end_date
     , payer
     , {{ quote_column('plan') }}
     , data_source
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__eligibility') }}

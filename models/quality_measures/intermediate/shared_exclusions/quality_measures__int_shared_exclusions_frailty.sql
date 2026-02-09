@@ -7,7 +7,7 @@
 with patients as (
 
     select
-          patient_id
+          person_id
     from {{ ref('quality_measures__stg_core__patient') }}
 
 )
@@ -31,16 +31,16 @@ with patients as (
 , conditions as (
 
     select
-          patient_id
+          person_id
         , recorded_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'snomed' then 'snomed-ct'
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -51,7 +51,7 @@ with patients as (
 , medical_claim as (
 
     select
-          patient_id
+          person_id
         , claim_start_date
         , claim_end_date
         , hcpcs_code
@@ -63,9 +63,9 @@ with patients as (
 , observations as (
 
     select
-          patient_id
+          person_id
         , observation_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -73,7 +73,7 @@ with patients as (
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -84,9 +84,9 @@ with patients as (
 , procedures as (
 
     select
-          patient_id
+          person_id
         , procedure_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -94,7 +94,7 @@ with patients as (
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -105,7 +105,7 @@ with patients as (
 , condition_exclusions as (
 
     select
-          conditions.patient_id
+          conditions.person_id
         , conditions.recorded_date
         , exclusion_codes.concept_name
     from conditions
@@ -118,7 +118,7 @@ with patients as (
 , med_claim_exclusions as (
 
     select
-          medical_claim.patient_id
+          medical_claim.person_id
         , medical_claim.claim_start_date
         , medical_claim.claim_end_date
         , medical_claim.hcpcs_code
@@ -133,7 +133,7 @@ with patients as (
 , observation_exclusions as (
 
     select
-          observations.patient_id
+          observations.person_id
         , observations.observation_date
         , exclusion_codes.concept_name
     from observations
@@ -146,7 +146,7 @@ with patients as (
 , procedure_exclusions as (
 
     select
-          procedures.patient_id
+          procedures.person_id
         , procedures.procedure_date
         , exclusion_codes.concept_name
     from procedures
@@ -159,17 +159,17 @@ with patients as (
 , patients_with_frailty as (
 
     select
-          patients.patient_id
+          patients.person_id
         , condition_exclusions.recorded_date as exclusion_date
         , condition_exclusions.concept_name as exclusion_reason
     from patients
          inner join condition_exclusions
-            on patients.patient_id = condition_exclusions.patient_id
+            on patients.person_id = condition_exclusions.person_id
 
     union all
 
     select
-          patients.patient_id
+          patients.person_id
         , coalesce(
               med_claim_exclusions.claim_start_date
             , med_claim_exclusions.claim_end_date
@@ -177,33 +177,33 @@ with patients as (
         , med_claim_exclusions.concept_name as exclusion_reason
     from patients
          inner join med_claim_exclusions
-            on patients.patient_id = med_claim_exclusions.patient_id
+            on patients.person_id = med_claim_exclusions.person_id
 
     union all
 
     select
-          patients.patient_id
+          patients.person_id
         , observation_exclusions.observation_date as exclusion_date
         , observation_exclusions.concept_name as exclusion_reason
     from patients
          inner join observation_exclusions
-            on patients.patient_id = observation_exclusions.patient_id
+            on patients.person_id = observation_exclusions.person_id
 
     union all
 
     select
-          patients.patient_id
+          patients.person_id
         , procedure_exclusions.procedure_date as exclusion_date
         , procedure_exclusions.concept_name as exclusion_reason
     from patients
          inner join procedure_exclusions
-            on patients.patient_id = procedure_exclusions.patient_id
+            on patients.person_id = procedure_exclusions.person_id
 
 )
 
 select
-      patient_id
+      person_id
     , exclusion_date
     , exclusion_reason
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from patients_with_frailty

@@ -21,8 +21,8 @@ with exclusion_codes as (
             when 'ICD10PCS' then 'icd-10-pcs'
           else lower(code_system) end as code_system
         , concept_name
-    From {{ref('quality_measures__value_sets')}}
-    where lower(concept_name) in  (
+    from {{ ref('quality_measures__value_sets') }}
+    where lower(concept_name) in (
             'hospice encounter'
           , 'hospice care ambulatory'
           , 'hospice diagnosis'
@@ -35,28 +35,28 @@ with exclusion_codes as (
 , conditions as (
 
     select
-          patient_id
+          person_id
         , claim_id
         , recorded_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'snomed' then 'snomed-ct'
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
-    from {{ ref('quality_measures__stg_core__condition') }} 
+    from {{ ref('quality_measures__stg_core__condition') }}
 
 )
 
 , medical_claim as (
 
     select
-          patient_id
+          person_id
         , claim_id
         , claim_start_date
         , claim_end_date
@@ -69,9 +69,9 @@ with exclusion_codes as (
 , observations as (
 
     select
-          patient_id
+          person_id
         , observation_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -79,7 +79,7 @@ with exclusion_codes as (
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -90,9 +90,9 @@ with exclusion_codes as (
 , procedures as (
 
     select
-          patient_id
+          person_id
         , procedure_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -100,7 +100,7 @@ with exclusion_codes as (
                 else lower(source_code_type)
               end
           ) as code_type
-        , coalesce (
+        , coalesce(
               normalized_code
             , source_code
           ) as code
@@ -111,7 +111,7 @@ with exclusion_codes as (
 , condition_exclusions as (
 
     select
-          conditions.patient_id
+          conditions.person_id
         , conditions.claim_id
         , conditions.recorded_date
         , exclusion_codes.concept_name as concept_name
@@ -125,7 +125,7 @@ with exclusion_codes as (
 , med_claim_exclusions as (
 
     select
-          medical_claim.patient_id
+          medical_claim.person_id
         , medical_claim.claim_id
         , medical_claim.claim_start_date
         , medical_claim.claim_end_date
@@ -141,7 +141,7 @@ with exclusion_codes as (
 , observation_exclusions as (
 
     select
-          observations.patient_id
+          observations.person_id
         , observations.observation_date
         , exclusion_codes.concept_name as concept_name
     from observations
@@ -154,7 +154,7 @@ with exclusion_codes as (
 , procedure_exclusions as (
 
     select
-          procedures.patient_id
+          procedures.person_id
         , procedures.procedure_date
         , exclusion_codes.concept_name as concept_name
     from procedures
@@ -164,30 +164,30 @@ with exclusion_codes as (
 
 )
 
-, patients_with_exclusions as(
-    
-    select patient_id
+, patients_with_exclusions as (
+
+    select person_id
         , recorded_date as exclusion_date
         , concept_name as exclusion_reason
     from condition_exclusions
 
     union all
 
-    select patient_id
+    select person_id
         , coalesce(claim_end_date, claim_start_date) as exclusion_date
         , concept_name as exclusion_reason
     from med_claim_exclusions
 
     union all
 
-    select patient_id
+    select person_id
         , observation_date as exclusion_date
         , concept_name as exclusion_reason
     from observation_exclusions
 
     union all
 
-    select patient_id
+    select person_id
         , procedure_date as exclusion_date
         , concept_name as exclusion_reason
     from procedure_exclusions
@@ -195,9 +195,9 @@ with exclusion_codes as (
 )
 
 select
-      patient_id
+      person_id
     , exclusion_date
     , exclusion_reason
     , 'hospice_palliative' as exclusion_type
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from patients_with_exclusions

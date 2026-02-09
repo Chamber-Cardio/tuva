@@ -28,7 +28,9 @@ with medical_claims as (
           claim_id
         , claim_line_number
         , claim_type
-        , patient_id
+        , payer
+        , person_id
+        , rendering_id as rendering_npi
         , claim_start_date
         , claim_end_date
         , bill_type_code
@@ -41,7 +43,8 @@ with medical_claims as (
 
     select
           claim_id
-        , patient_id
+        , payer
+        , person_id
         , code
     from {{ ref('cms_hcc__stg_core__condition') }}
     where code_type = 'icd-10-cm'
@@ -51,7 +54,9 @@ with medical_claims as (
 , cpt_hcpcs_list as (
 
     select
-          payment_year
+        -- This is mislabelled as payment year, it should be collection year
+        -- TODO: Update the label in the seed file
+          payment_year as collection_year
         , hcpcs_cpt_code
     from {{ ref('cms_hcc__cpt_hcpcs') }}
 
@@ -60,10 +65,11 @@ with medical_claims as (
 , professional_claims as (
 
     select
-        medical_claims.claim_id
+          medical_claims.claim_id
         , medical_claims.claim_line_number
         , medical_claims.claim_type
-        , medical_claims.patient_id
+        , medical_claims.payer
+        , medical_claims.person_id
         , medical_claims.claim_start_date
         , medical_claims.claim_end_date
         , medical_claims.bill_type_code
@@ -75,19 +81,19 @@ with medical_claims as (
         inner join cpt_hcpcs_list
             on medical_claims.hcpcs_code = cpt_hcpcs_list.hcpcs_cpt_code
         inner join {{ ref('cms_hcc__int_monthly_collection_dates') }} as dates
-            on claim_end_date between dates.collection_start_date and dates.collection_end_date
-            and cpt_hcpcs_list.payment_year = dates.payment_year
+            on coalesce(claim_end_date, claim_start_date) between dates.collection_start_date and dates.collection_end_date
+            and cpt_hcpcs_list.collection_year + 1 = dates.payment_year
     where claim_type = 'professional'
-
 )
 
 , inpatient_claims as (
 
     select
-        medical_claims.claim_id
+          medical_claims.claim_id
         , medical_claims.claim_line_number
         , medical_claims.claim_type
-        , medical_claims.patient_id
+        , medical_claims.payer
+        , medical_claims.person_id
         , medical_claims.claim_start_date
         , medical_claims.claim_end_date
         , medical_claims.bill_type_code
@@ -97,19 +103,20 @@ with medical_claims as (
         , dates.collection_end_date
     from medical_claims
         inner join {{ ref('cms_hcc__int_monthly_collection_dates') }} as dates
-            on claim_end_date between dates.collection_start_date and dates.collection_end_date
+            on coalesce(claim_end_date, claim_start_date) between dates.collection_start_date and dates.collection_end_date
     where claim_type = 'institutional'
-        and substring(bill_type_code, 1, 2) in ('11','41')
+        and substring(bill_type_code, 1, 2) in ('11', '41')
 
 )
 
 , outpatient_claims as (
 
     select
-        medical_claims.claim_id
+          medical_claims.claim_id
         , medical_claims.claim_line_number
         , medical_claims.claim_type
-        , medical_claims.patient_id
+        , medical_claims.payer
+        , medical_claims.person_id
         , medical_claims.claim_start_date
         , medical_claims.claim_end_date
         , medical_claims.bill_type_code
@@ -120,11 +127,13 @@ with medical_claims as (
     from medical_claims
         inner join cpt_hcpcs_list
             on medical_claims.hcpcs_code = cpt_hcpcs_list.hcpcs_cpt_code
+        -- TODO: Review if this needs to be done here...likely can be done much later to avoid increasing number of rows by 12
+        -- this early on
         inner join {{ ref('cms_hcc__int_monthly_collection_dates') }} as dates
-            on claim_end_date between dates.collection_start_date and dates.collection_end_date
-            and cpt_hcpcs_list.payment_year = dates.payment_year
+            on coalesce(claim_end_date, claim_start_date) between dates.collection_start_date and dates.collection_end_date
+            and cpt_hcpcs_list.collection_year + 1 = dates.payment_year
     where claim_type = 'institutional'
-        and substring(bill_type_code, 1, 2) in ('12','13','43','71','73','76','77','85')
+        and substring(bill_type_code, 1, 2) in ('12', '13', '43', '71', '73', '76', '77', '85')
 
 )
 
@@ -142,7 +151,9 @@ with medical_claims as (
 
     select distinct
           eligible_claims.claim_id
-        , eligible_claims.patient_id
+        , eligible_claims.claim_line_number
+        , eligible_claims.payer
+        , eligible_claims.person_id
         , eligible_claims.payment_year
         , eligible_claims.collection_start_date
         , eligible_claims.collection_end_date
@@ -150,14 +161,18 @@ with medical_claims as (
     from eligible_claims
         inner join conditions
             on eligible_claims.claim_id = conditions.claim_id
-            and eligible_claims.patient_id = conditions.patient_id
+            and eligible_claims.person_id = conditions.person_id
+            and eligible_claims.payer = conditions.payer
 
 )
 
 , add_data_types as (
 
     select distinct
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(claim_id as {{ dbt.type_string() }}) as claim_id
+        , cast(claim_line_number as {{ dbt.type_string() }}) as claim_line_number
+        , cast(payer as {{ dbt.type_string() }}) as payer
+        , cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(code as {{ dbt.type_string() }}) as condition_code
         , cast(payment_year as integer) as payment_year
         , cast(collection_start_date as date) as collection_start_date
@@ -167,10 +182,13 @@ with medical_claims as (
 )
 
 select
-      patient_id
+      person_id
+    , claim_id
+    , claim_line_number
+    , payer
     , condition_code
     , payment_year
     , collection_start_date
     , collection_end_date
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

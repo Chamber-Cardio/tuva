@@ -6,7 +6,7 @@
 {% if var('clinical_enabled', var('tuva_marts_enabled',False)) == true and var('claims_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 select
-      patient_id
+      person_id
     , encounter_id
     , observation_date
     , result
@@ -15,13 +15,13 @@ select
     , normalized_code_type
     , normalized_code
     , normalized_description
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__observation') }}
 
 {% elif var('clinical_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 select
-      patient_id
+      person_id
     , encounter_id
     , observation_date
     , result
@@ -30,14 +30,14 @@ select
     , normalized_code_type
     , normalized_code
     , normalized_description
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__observation') }}
 
 {% elif var('claims_enabled', var('tuva_marts_enabled',False)) == true -%}
 
 {% if target.type == 'fabric' %}
     select top 0
-          cast(null as {{ dbt.type_string() }} ) as patient_id
+          cast(null as {{ dbt.type_string() }} ) as person_id
         , cast(null as {{ dbt.type_string() }} ) as encounter_id
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as observation_date
         , cast(null as {{ dbt.type_string() }} ) as result
@@ -49,7 +49,7 @@ from {{ ref('core__observation') }}
         , cast(null as {{ dbt.type_timestamp() }} ) as tuva_last_run
 {% else %}
 select
-          cast(null as {{ dbt.type_string() }} ) as patient_id
+          cast(null as {{ dbt.type_string() }} ) as person_id
         , cast(null as {{ dbt.type_string() }} ) as encounter_id
         , {{ try_to_cast_date('null', 'YYYY-MM-DD') }} as observation_date
         , cast(null as {{ dbt.type_string() }} ) as result

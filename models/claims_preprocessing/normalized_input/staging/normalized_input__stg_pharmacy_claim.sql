@@ -8,7 +8,7 @@
 select
       claim_id
     , claim_line_number
-    , patient_id
+    , person_id
     , member_id
     , payer
     , {{ quote_column('plan') }}
@@ -29,5 +29,6 @@ select
     , in_network_flag
     , data_source
     , file_name
+    , file_date
     , ingest_datetime
-from {{ ref('pharmacy_claim') }}
+from {{ ref('input_layer__pharmacy_claim') }}

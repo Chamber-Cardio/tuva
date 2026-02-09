@@ -1,13 +1,11 @@
 {{ config(
-     enabled = var('claims_enabled',var('tuva_marts_enabled',False))
- | as_bool
-   )
-}}
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
+)}}
 
 
-with eligibility_spans as(
+with eligibility_spans as (
     select distinct
-        {{ dbt.concat([
+        {{ concat_custom([
             "member_id",
             "'-'",
             "enrollment_start_date",
@@ -18,10 +16,10 @@ with eligibility_spans as(
             "'-'",
             quote_column('plan'),
         ]) }} as eligibility_span_id
-        , patient_id
+        , person_id
         , birth_date
         , gender
-    from {{ ref('eligibility') }}
+    from {{ ref('input_layer__eligibility') }}
 )
 
 , missing_birth_date as(
@@ -66,12 +64,12 @@ with eligibility_spans as(
 , multiple_birth_date as(
     select
     'Patient has multiple birthdays' as data_quality_check
-    , count(distinct patient_id) as result_count
+    , count(distinct person_id) as result_count
     from(
         select
-            patient_id
+            person_id
             , birth_date
-            , rank() over (partition by patient_id, birth_date order by birth_date) as rank_birth_date
+            , rank() over (partition by person_id, birth_date order by birth_date) as rank_birth_date
         from eligibility_spans e
         where birth_date is not null
     )x

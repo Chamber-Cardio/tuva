@@ -19,7 +19,7 @@ with diabetes_codes as (
 , conditions as (
 
     select
-          patient_id
+          person_id
         , claim_id
         , encounter_id
         , recorded_date
@@ -34,7 +34,7 @@ with diabetes_codes as (
 , diabetes_conditions as (
 
     select
-          conditions.patient_id
+          conditions.person_id
         , conditions.recorded_date as evidence_date
     from conditions
     inner join diabetes_codes
@@ -47,14 +47,14 @@ with diabetes_codes as (
 
     select
         distinct
-          patient_id
+          person_id
         , performance_period_begin
         , performance_period_end
         , measure_id
         , measure_name
-        , measure_version 
+        , measure_version
     from diabetes_conditions
-    inner join {{ ref('quality_measures__int_cqm438__performance_period') }} pp
+    inner join {{ ref('quality_measures__int_cqm438__performance_period') }} as pp
     on evidence_date <= pp.performance_period_end
 
 )
@@ -62,7 +62,7 @@ with diabetes_codes as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(performance_period_begin as date) as performance_period_begin
         , cast(performance_period_end as date) as performance_period_end
         , cast(measure_id as {{ dbt.type_string() }}) as measure_id
@@ -72,12 +72,12 @@ with diabetes_codes as (
 
 )
 
-select 
-      patient_id
+select
+      person_id
     , performance_period_begin
     , performance_period_end
     , measure_id
     , measure_name
     , measure_version
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

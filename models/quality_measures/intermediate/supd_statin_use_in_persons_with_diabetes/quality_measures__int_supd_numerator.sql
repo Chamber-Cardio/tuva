@@ -6,7 +6,7 @@
 with denominator as (
 
     select
-          patient_id
+          person_id
         , performance_period_begin
         , performance_period_end
         , measure_id
@@ -31,7 +31,7 @@ with denominator as (
 , patients_taking_statin_meds as (
 
     select
-        patient_id
+        person_id
       , dispensing_date
     from {{ ref('quality_measures__stg_pharmacy_claim') }} as pharmacy_claims
     inner join statin_codes
@@ -43,20 +43,20 @@ with denominator as (
 , qualifying_patients_in_deno as (
 
     select
-          patients_taking_statin_meds.patient_id
+          patients_taking_statin_meds.person_id
         , patients_taking_statin_meds.dispensing_date as evidence_date
     from patients_taking_statin_meds
     inner join denominator
-      on patients_taking_statin_meds.patient_id = denominator.patient_id
-        and dispensing_date between 
+      on patients_taking_statin_meds.person_id = denominator.person_id
+        and dispensing_date between
           denominator.performance_period_begin and denominator.performance_period_end
-        
+
 )
 
 , numerator as (
 
     select
-          patient_id
+          person_id
         , evidence_date
         , 1 as numerator_flag
     from qualifying_patients_in_deno
@@ -66,7 +66,7 @@ with denominator as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(evidence_date as date) as evidence_date
         , cast(null as {{ dbt.type_string() }}) as evidence_value
         , cast(numerator_flag as integer) as numerator_flag
@@ -75,9 +75,9 @@ with denominator as (
 )
 
 select
-      patient_id
+      person_id
     , evidence_date
     , evidence_value
     , numerator_flag
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

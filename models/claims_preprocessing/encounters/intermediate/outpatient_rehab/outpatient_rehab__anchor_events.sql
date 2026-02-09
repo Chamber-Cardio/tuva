@@ -13,7 +13,7 @@ with service_category as (
     service_category_2 = 'outpatient rehabilitation'
 )
 
-select distinct 
+select distinct
 claim_id
-, '{{ var('tuva_last_run')}}' as tuva_last_run
+, cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from service_category

@@ -20,7 +20,7 @@ with cholesterol_codes as (
 , conditions as (
 
     select
-          patient_id
+          person_id
         , claim_id
         , encounter_id
         , recorded_date
@@ -35,7 +35,7 @@ with cholesterol_codes as (
 , cholesterol_conditions as (
 
     select
-          conditions.patient_id
+          conditions.person_id
         , conditions.recorded_date as evidence_date
     from conditions
     inner join cholesterol_codes
@@ -47,9 +47,9 @@ with cholesterol_codes as (
 , procedures as (
 
     select
-          patient_id
+          person_id
         , procedure_date
-        , coalesce (
+        , coalesce(
               normalized_code_type
             , case
                 when lower(source_code_type) = 'cpt' then 'hcpcs'
@@ -68,7 +68,7 @@ with cholesterol_codes as (
 , cholesterol_procedures as (
 
     select
-          procedures.patient_id
+          procedures.person_id
         , procedures.procedure_date as evidence_date
     from procedures
          inner join cholesterol_codes
@@ -80,14 +80,12 @@ with cholesterol_codes as (
 , labs as (
 
     select
-          patient_id
+          person_id
         , result
         , result_date
         , collection_date
-        , source_code_type
-        , source_code
-        , normalized_code_type
-        , normalized_code
+        , code_type
+        , code
     from {{ ref('quality_measures__stg_core__lab_result') }}
 
 )
@@ -95,17 +93,17 @@ with cholesterol_codes as (
 , cholesterol_tests_with_result as (
 
     select
-      labs.patient_id
+      labs.person_id
     , labs.result as evidence_value
     , coalesce(collection_date, result_date) as evidence_date
     , cholesterol_codes.concept_name
-    , row_number() over(partition by labs.patient_id order by
-                          labs.result desc
+    , row_number() over (partition by labs.person_id
+                          order by labs.result desc
                         , result_date desc) as rn
     from labs
     inner join cholesterol_codes
-      on coalesce(labs.normalized_code, labs.source_code) = cholesterol_codes.code
-        and coalesce(labs.normalized_code_type, labs.source_code_type) = cholesterol_codes.code_system
+      on labs.code = cholesterol_codes.code
+        and labs.code_type = cholesterol_codes.code_system
    {% if target.type == 'fabric' %}
         WHERE result LIKE '%.%' OR result LIKE '%[0-9]%'
         AND result NOT LIKE '%[^0-9.]%'
@@ -118,10 +116,10 @@ with cholesterol_codes as (
 , cholesterol_labs as (
 
     select
-          patient_id
+          person_id
         , evidence_date
     from cholesterol_tests_with_result
-    where rn= 1
+    where rn = 1
         and cast(evidence_value as {{ dbt.type_numeric() }}) >= 190
 
 )
@@ -129,21 +127,21 @@ with cholesterol_codes as (
 , all_patients_with_cholesterol as (
 
     select
-          cholesterol_conditions.patient_id
+          cholesterol_conditions.person_id
         , cholesterol_conditions.evidence_date
     from cholesterol_conditions
 
     union all
 
     select
-          cholesterol_procedures.patient_id
+          cholesterol_procedures.person_id
         , cholesterol_procedures.evidence_date
     from cholesterol_procedures
 
     union all
 
     select
-          cholesterol_labs.patient_id
+          cholesterol_labs.person_id
         , cholesterol_labs.evidence_date
     from cholesterol_labs
 
@@ -153,14 +151,14 @@ with cholesterol_codes as (
 
     select
         distinct
-          patient_id
+          person_id
         , performance_period_begin
         , performance_period_end
         , measure_id
         , measure_name
         , measure_version
     from all_patients_with_cholesterol
-    inner join {{ref('quality_measures__int_cqm438__performance_period')}} pp
+    inner join {{ ref('quality_measures__int_cqm438__performance_period') }} as pp
     on evidence_date <= pp.performance_period_end
 
 )
@@ -168,7 +166,7 @@ with cholesterol_codes as (
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
         , cast(performance_period_begin as date) as performance_period_begin
         , cast(performance_period_end as date) as performance_period_end
         , cast(measure_id as {{ dbt.type_string() }}) as measure_id
@@ -179,11 +177,11 @@ with cholesterol_codes as (
 )
 
 select
-      patient_id
+      person_id
     , performance_period_begin
     , performance_period_end
     , measure_id
     , measure_name
     , measure_version
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

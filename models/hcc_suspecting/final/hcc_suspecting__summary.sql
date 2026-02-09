@@ -6,7 +6,7 @@
 with patients as (
 
     select
-          patient_id
+          person_id
         , sex
         , birth_date
         {% if target.type == 'fabric' %}
@@ -22,31 +22,36 @@ with patients as (
 , suspecting_list as (
 
       select
-          patient_id
+          person_id
+        , payer
         , count(*) as gaps
     from {{ ref('hcc_suspecting__list') }}
-    group by patient_id
+    group by
+          person_id
+        , payer
 
 )
 
 , joined as (
 
     select
-          patients.patient_id
+          patients.person_id
+        , suspecting_list.payer
         , patients.sex
         , patients.birth_date
         , patients.age
         , suspecting_list.gaps
     from patients
          inner join suspecting_list
-         on patients.patient_id = suspecting_list.patient_id
+         on patients.person_id = suspecting_list.person_id
 
 )
 
 , add_data_types as (
 
     select
-          cast(patient_id as {{ dbt.type_string() }}) as patient_id
+          cast(person_id as {{ dbt.type_string() }}) as person_id
+        , cast(payer as {{ dbt.type_string() }}) as payer
         , cast(sex as {{ dbt.type_string() }}) as patient_sex
         , cast(birth_date as date) as patient_birth_date
         , cast(age as integer) as patient_age
@@ -56,10 +61,11 @@ with patients as (
 )
 
 select
-      patient_id
+      person_id
+    , payer
     , patient_sex
     , patient_birth_date
     , patient_age
     , suspecting_gaps
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from add_data_types

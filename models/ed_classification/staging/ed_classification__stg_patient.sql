@@ -1,10 +1,11 @@
 {{ config(
-     enabled = var('ed_classification_enabled',var('claims_enabled',var('tuva_marts_enabled',False))) | as_bool
+     enabled = var('ed_classification_enabled',var('claims_enabled',var('tuva_marts_enabled',False)))
+ | as_bool
    )
 }}
 
 select
-    patient_id
+    person_id
     , sex
     , birth_date
     , race
@@ -12,4 +13,5 @@ select
     , zip_code
     , latitude
     , longitude
+    , data_source
 from {{ ref('core__patient') }}

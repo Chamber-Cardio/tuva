@@ -3,10 +3,11 @@
    )
 }}
 
-select 
+select
       encounter_id
     , claim_id
-    , patient_id
+    , person_id
     , normalized_code
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , data_source
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__procedure') }}

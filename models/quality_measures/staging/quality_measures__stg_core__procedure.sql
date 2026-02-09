@@ -3,7 +3,7 @@
    )
 }}
 select
-      patient_id
+      person_id
     , encounter_id
     , procedure_date
     , source_code_type
@@ -15,5 +15,5 @@ select
     , modifier_3
     , modifier_4
     , modifier_5
-    , '{{ var('tuva_last_run')}}' as tuva_last_run
+    , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from {{ ref('core__procedure') }}

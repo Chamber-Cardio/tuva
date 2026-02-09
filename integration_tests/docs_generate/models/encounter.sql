@@ -1,5 +1,6 @@
 select 
       cast(null as {{ dbt.type_string() }} ) as encounter_id
+    , cast(null as {{ dbt.type_string() }} ) as person_id
     , cast(null as {{ dbt.type_string() }} ) as patient_id
     , cast(null as {{ dbt.type_string() }} ) as encounter_type
     , cast(null as date) as encounter_start_date
@@ -18,10 +19,9 @@ select
     , cast(null as {{ dbt.type_string() }} ) as primary_diagnosis_code_type
     , cast(null as {{ dbt.type_string() }} ) as primary_diagnosis_code
     , cast(null as {{ dbt.type_string() }} ) as primary_diagnosis_description
-    , cast(null as {{ dbt.type_string() }} ) as ms_drg_code
-    , cast(null as {{ dbt.type_string() }} ) as ms_drg_description
-    , cast(null as {{ dbt.type_string() }} ) as apr_drg_code
-    , cast(null as {{ dbt.type_string() }} ) as apr_drg_description
+    , cast(null as {{ dbt.type_string() }} ) as drg_code_type
+    , cast(null as {{ dbt.type_string() }} ) as drg_code
+     , cast(null as {{ dbt.type_string() }} ) as drg_description
     , cast(null as {{ dbt.type_numeric() }} ) as paid_amount
     , cast(null as {{ dbt.type_numeric() }} ) as allowed_amount
     , cast(null as {{ dbt.type_numeric() }} ) as charge_amount

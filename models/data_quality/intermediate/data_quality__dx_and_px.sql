@@ -1,7 +1,6 @@
 {{ config(
-     enabled = var('data_quality_enabled',var('claims_enabled',var('tuva_marts_enabled',False))) | as_bool
-   )
-}}
+     enabled = (var('enable_legacy_data_quality', False) and var('claims_enabled', var('tuva_marts_enabled', False))) | as_bool
+)}}
 
 with unpivot_diagnosis as(
         {{ dbt_utils.unpivot(
@@ -12,7 +11,7 @@ with unpivot_diagnosis as(
         value_name='diagnosis_code',
         remove=[   'claim_line_number'
                     , 'claim_type'
-                    , 'patient_id'
+                    , 'person_id'
                     , 'member_id'
                     , 'payer'
                     , 'plan'
@@ -27,8 +26,7 @@ with unpivot_diagnosis as(
                     , 'discharge_disposition_code'
                     , 'place_of_service_code'
                     , 'bill_type_code'
-                    , 'ms_drg_code'
-                    , 'apr_drg_code'
+                    , 'drg_code'
                     , 'revenue_center_code'
                     , 'service_unit_quantity'
                     , 'hcpcs_code'
@@ -141,7 +139,7 @@ with unpivot_diagnosis as(
         value_name='procedure_code',
         remove=[ 'claim_line_number'
                 , 'claim_type'
-                , 'patient_id'
+                , 'person_id'
                 , 'member_id'
                 , 'payer'
                 , 'plan'
@@ -156,8 +154,7 @@ with unpivot_diagnosis as(
                 , 'discharge_disposition_code'
                 , 'place_of_service_code'
                 , 'bill_type_code'
-                , 'ms_drg_code'
-                , 'apr_drg_code'
+                , 'drg_code'
                 , 'revenue_center_code'
                 , 'service_unit_quantity'
                 , 'hcpcs_code'
@@ -268,13 +265,13 @@ with unpivot_diagnosis as(
 , total_claims as(
     select
         cast(count(distinct claim_id) as integer ) as total_claims
-    from {{ ref('medical_claim') }}
+    from {{ ref('input_layer__medical_claim') }}
 )
 
 , claims_with_primary_dx as(
     select
         count(diagnosis_code_1) as distinct_claims_with_primary
-    from {{ ref('medical_claim') }}
+    from {{ ref('input_layer__medical_claim') }}
 )
 
 , secondary_dx_prep_cte as (    
@@ -303,7 +300,7 @@ with unpivot_diagnosis as(
     select
      cast('missing primary diagnosis' as {{ dbt.type_string() }}) as data_quality_check
         , cast(count(distinct claim_id) as integer ) as result_count
-    from {{ ref('medical_claim') }} m
+    from {{ ref('input_layer__medical_claim') }} m
     where diagnosis_code_1 is null
 )
 , invalid_primary_dx as(
@@ -443,5 +440,5 @@ with unpivot_diagnosis as(
 
 select
     *
-  , '{{ var('tuva_last_run') }}' as tuva_last_run
+  , cast('{{ var('tuva_last_run') }}' as {{ dbt.type_timestamp() }}) as tuva_last_run
 from final
