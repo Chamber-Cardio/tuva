@@ -96,7 +96,7 @@ group by {{ group_by_col }}
 select
     {{ group_by_col }},
     json_serialize(
-        json_arrayagg(
+        array_agg(
             object(
                 {%- for col in object_col_list %}
                     {%- if not loop.first %}, {% endif -%}
