@@ -95,23 +95,22 @@ group by {{ group_by_col }}
 {% macro redshift__create_json_object(table_ref, group_by_col, object_col_name, object_col_list) %}
 select
     {{ group_by_col }},
-    '[' || listagg(json_serialize(object_json), ',') || ']' as {{ object_col_name }}
-from (
-    select
-        {{ group_by_col }},
-        object(
-            {%- for col in object_col_list %}
-                {%- if not loop.first %}, {% endif -%}
-                '{{ the_tuva_project.snake_to_camel(col) }}',
-                {%- if 'list' in col | lower -%}
-                json_parse( {{ col }} ) /* Parse JSON lists to prevent escaping */
-                {%- else -%}
-                {{ col }}
-                {%- endif %}
-            {% endfor %}
-        ) as object_json
-    from {{ table_ref }}
-) sub
+    json_serialize(
+        json_arrayagg(
+            object(
+                {%- for col in object_col_list %}
+                    {%- if not loop.first %}, {% endif -%}
+                    '{{ the_tuva_project.snake_to_camel(col) }}',
+                    {%- if 'list' in col | lower -%}
+                    json_parse( {{ col }} ) /* Parse JSON lists to prevent escaping */
+                    {%- else -%}
+                    {{ col }}
+                    {%- endif %}
+                {% endfor %}
+            )
+        )
+    ) as {{ object_col_name }}
+from {{ table_ref }}
 group by {{ group_by_col }}
 {% endmacro %}
 
