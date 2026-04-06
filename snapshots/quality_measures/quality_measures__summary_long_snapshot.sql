@@ -12,7 +12,7 @@
     , "strategy": "check"
     , "check_cols": ["denominator_flag", "numerator_flag", "exclusion_flag", "performance_flag", "evidence_date", "evidence_value", "exclusion_date", "exclusion_reason"]
     , "unique_key": "person_id||coalesce(measure_id, '')||coalesce(measure_name, '')||coalesce(measure_version, '')||coalesce(cast(performance_period_begin as varchar), '')||coalesce(cast(performance_period_end as varchar), '')"
-    , "enabled": var('snapshots_enabled',False) == true and var('claims_enabled', var('clinical_enabled', False)) == true | as_bool
+    , "enabled": var('snapshots_enabled',False) == true and var('quality_measures_enabled',var('claims_enabled',var('clinical_enabled',var('tuva_marts_enabled',False)))) == true | as_bool
     , "hard_deletes": "invalidate"
   })
 }}

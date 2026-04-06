@@ -12,7 +12,7 @@
     , "strategy": "check"
     , "check_cols": ["v24_risk_score", "v28_risk_score", "blended_risk_score", "normalized_risk_score", "payment_risk_score", "payment_risk_score_weighted_by_months", "member_months"]
     , "unique_key": "person_id||payer||payment_year"
-    , "enabled": var('snapshots_enabled',False) == true and var('claims_enabled', False) == true | as_bool
+    , "enabled": var('snapshots_enabled',False) == true and var('cms_hcc_enabled',var('claims_enabled',var('tuva_marts_enabled',False))) == true | as_bool
     , "hard_deletes": "invalidate"
   })
 }}
