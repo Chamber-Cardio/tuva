@@ -1,3 +1,125 @@
+# Chamber Cardio — Tuva Fork
+
+This is Chamber Cardio's fork of the [Tuva Project](https://github.com/tuva-health/tuva). It contains Chamber-specific customizations on top of the upstream package and is installed as a dbt package in [chamber/dbt-development](https://github.com/Chamber-Cardio/dbt-development).
+
+
+---
+
+## Branch Structure
+
+| Branch | Purpose | Who touches it |
+|---|---|---|
+| `chamber-dev` | Chamber customizations — **default branch** | Team PRs |
+| `main` | Exact mirror of `upstream/main` | Maintained by syncing on GitHub or by a hard reset |
+ß
+> **Start here:** Clone the repo and you will automatically land on `chamber-dev`. Do not commit directly to `main`.
+
+## Rules of the Road
+
+- **Never commit directly to `main`** — it is the upstream mirror and will be overwritten on the next sync
+- **Always target `chamber-dev`** for PRs with Chamber-specific work
+- **Always target `tuva-health/tuva:main`** for PRs contributing back upstream
+- **Use `git pull --rebase`** when updating your local `chamber-dev`
+
+## First-Time Setup
+
+```bash
+git clone git@github.com:Chamber-Cardio/tuva.git
+cd tuva
+
+# Confirm you are on chamber-dev
+git branch
+# * chamber-dev
+
+# Verify remotes
+git remote -v
+# origin    git@github.com:Chamber-Cardio/tuva.git (fetch)
+# origin    git@github.com:Chamber-Cardio/tuva.git (push)
+# upstream  https://github.com/tuva-health/tuva.git (fetch)
+# upstream  https://github.com/tuva-health/tuva.git (push)
+```
+
+If the `upstream` remote is missing, add it:
+
+```bash
+git remote add upstream https://github.com/tuva-health/tuva.git
+```
+
+## Syncing with Upstream
+
+Run this whenever the Tuva Project cuts a new release.
+
+```bash
+# 1. Pull the latest upstream changes
+git fetch upstream
+
+# 2. Fast-forward main to match upstream exactly
+git checkout main
+git merge upstream/main --ff-only
+git push origin main
+
+# 3. Rebase Chamber customizations onto the updated main
+git checkout chamber-dev
+git rebase main
+
+# 4. Resolve any conflicts, then push
+git push origin chamber-dev --force-with-lease
+```
+
+After syncing, team members should update their local branch with:
+
+```bash
+git pull --rebase origin chamber-dev
+```
+
+> Use `--rebase` rather than plain `git pull` because `chamber-dev` is a rebasing branch. A regular merge pull will create unnecessary merge commits.
+
+## Contributing Chamber-Specific Changes
+
+All Chamber customizations go into `chamber-dev` via pull request.
+
+```bash
+# 1. Branch from chamber-dev
+git checkout chamber-dev
+git checkout -b feature/your-feature-name
+
+# 2. Make changes and commit
+git add .
+git commit -m "Description of change"
+
+# 3. Push and open a PR against Chamber-Cardio/tuva:chamber-dev
+git push origin feature/your-feature-name
+```
+
+Open the PR against **`chamber-dev`**, not `main`.
+
+## Contributing a Fix Back to Upstream
+
+If a fix is general enough to benefit the broader Tuva community, contribute it back to [tuva-health/tuva](https://github.com/tuva-health/tuva).
+
+```bash
+# 1. Branch from main (clean upstream base — no Chamber customizations)
+git checkout main
+git checkout -b fix/your-fix-name
+
+# 2. Make changes and commit
+git add .
+git commit -m "Fix: description of fix"
+
+# 3. Push and open a PR against tuva-health/tuva:main
+git push origin fix/your-fix-name
+```
+
+When opening the PR on GitHub, make sure the **base repository** is set to `tuva-health/tuva` and the base branch is `main`.
+
+Once upstream merges and releases the fix, it will automatically come back into `main` the next time you run the sync workflow above — no need to keep the commit on `chamber-dev`.
+
+---
+---
+<br><br><br>
+
+# The Tuva Project
+
 [![Apache License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![dbt logo and version](https://img.shields.io/static/v1?logo=dbt&label=dbt-version&message=1.10%2B&color=orange)
 
 ![Tuva Project Overview](./docs/static/img/tuva_project_overview_from_downloads.jpg)
