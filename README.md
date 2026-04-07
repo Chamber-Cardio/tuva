@@ -47,7 +47,7 @@ git remote add upstream https://github.com/tuva-health/tuva.git
 
 ## Syncing with Upstream
 
-Run this whenever the Tuva Project cuts a new release.
+Run this whenever the Tuva Project cuts a new release. We could do this anytime commits are added to tuva/main, but releases are generally more stable.
 
 ```bash
 # 1. Pull the latest upstream changes
