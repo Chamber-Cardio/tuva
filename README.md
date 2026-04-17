@@ -114,6 +114,27 @@ When opening the PR on GitHub, make sure the **base repository** is set to `tuva
 
 Once upstream merges and releases the fix, it will automatically come back into `main` the next time you run the sync workflow above — no need to keep the commit on `chamber-dev`.
 
+### Cherry-Picking Existing Commits to Upstream
+
+If fixes already landed on `chamber-dev` and you want to contribute them back upstream, cherry-pick them onto a clean branch from `main`:
+
+```bash
+# 1. Fetch the latest upstream
+git fetch upstream
+
+# 2. Create a new branch from upstream/main
+git checkout -b snapshot-improvements upstream/main
+
+# 3. Cherry-pick the commits (oldest first)
+git cherry-pick 713dbbfe   # [SC-4404] Bug fix for cms hcc snapshots
+git cherry-pick eaee0cf5   # [SC-4422] Snapshot improvements
+
+# 4. Push and open a PR against tuva-health/tuva:main
+git push -u origin snapshot-improvements
+```
+
+If you hit conflicts during cherry-pick, resolve them and run `git cherry-pick --continue`.
+
 ---
 ---
 <br><br><br>
