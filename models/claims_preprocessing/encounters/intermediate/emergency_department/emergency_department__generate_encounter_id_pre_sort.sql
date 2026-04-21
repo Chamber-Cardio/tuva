@@ -167,7 +167,7 @@ with claim_start_end as (
     , aa.facility_npi
     , aa.row_num
     , aa.close_flag
-    , bb.min_closing_row
+    , coalesce(bb.min_closing_row,aa.row_num) as min_closing_row /* added fix to account for ED encounters with no closing row */
   from close_flags as aa
   left outer join find_min_closing_row_num_for_every_claim as bb
     on aa.patient_data_source_id = bb.patient_data_source_id
