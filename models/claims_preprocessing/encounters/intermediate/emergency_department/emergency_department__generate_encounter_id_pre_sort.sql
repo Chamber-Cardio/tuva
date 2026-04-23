@@ -9,24 +9,24 @@ with claim_start_end as (
     , patient_data_source_id
     , min(start_date) as start_date
     , max(end_date) as end_date
+    , max(facility_id) as facility_id
+    , max(discharge_disposition_code) as discharge_disposition_code
+    , max(claim_type) as claim_type  -- 'institutional' | 'professional'
   from {{ ref('encounters__stg_medical_claim') }}
+  where service_category_2 = 'emergency department' -- both inst and prof
   group by claim_id, patient_data_source_id
 )
 
 , base as (
-  select distinct
-      enc.claim_id
-    , enc.patient_data_source_id
-    , c.start_date
-    , c.end_date
-    , enc.facility_id
-    , enc.discharge_disposition_code
-    , enc.claim_type  -- 'institutional' | 'professional'
-  from {{ ref('encounters__stg_medical_claim') }} as enc
-  inner join claim_start_end as c
-    on enc.claim_id = c.claim_id
-   and c.patient_data_source_id = enc.patient_data_source_id
-  where enc.service_category_2 = 'emergency department' -- both inst and prof
+  select
+      claim_id
+    , patient_data_source_id
+    , start_date
+    , end_date
+    , facility_id
+    , discharge_disposition_code
+    , claim_type
+  from claim_start_end
 )
 
 , add_row_num as (
@@ -167,7 +167,7 @@ with claim_start_end as (
     , aa.facility_id
     , aa.row_num
     , aa.close_flag
-    , coalesce(bb.min_closing_row,aa.row_num) as min_closing_row /* added fix to account for ED encounters with no closing row */
+    , coalesce(bb.min_closing_row,aa.row_num) as min_closing_row /* fallback to own row when no downstream close row exists */
   from close_flags as aa
   left outer join find_min_closing_row_num_for_every_claim as bb
     on aa.patient_data_source_id = bb.patient_data_source_id

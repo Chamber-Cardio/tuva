@@ -9,25 +9,24 @@ with claim_start_end as (
     , patient_data_source_id
     , min(start_date) as start_date
     , max(end_date) as end_date
+    , max(facility_id) as facility_id
+    , max(discharge_disposition_code) as discharge_disposition_code
   from {{ ref('encounters__stg_medical_claim') }}
+  where
+    service_category_2 = 'inpatient long term acute care'
+    and claim_type = 'institutional'
   group by claim_id, patient_data_source_id
 )
 
 , base as (
-  select distinct
-    enc.claim_id
-    , enc.patient_data_source_id
-    , c.start_date
-    , c.end_date
-    , enc.facility_id
-    , enc.discharge_disposition_code
-  from {{ ref('encounters__stg_medical_claim') }} as enc
-  inner join claim_start_end as c
-    on enc.claim_id = c.claim_id
-    and c.patient_data_source_id = enc.patient_data_source_id
-  where
-    enc.service_category_2 = 'inpatient long term acute care'
-    and enc.claim_type = 'institutional'
+  select
+    claim_id
+    , patient_data_source_id
+    , start_date
+    , end_date
+    , facility_id
+    , discharge_disposition_code
+  from claim_start_end
 )
 
 , add_row_num as (
@@ -162,7 +161,7 @@ order by end_date, start_date, claim_id) as row_num
     , aa.facility_id
     , aa.row_num
     , aa.close_flag
-    , bb.min_closing_row
+    , coalesce(bb.min_closing_row, aa.row_num) as min_closing_row /* fallback to own row when no downstream close row exists */
   from close_flags as aa
   left outer join find_min_closing_row_num_for_every_claim as bb
     on aa.patient_data_source_id = bb.patient_data_source_id
