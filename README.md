@@ -135,6 +135,29 @@ git push -u origin snapshot-improvements
 
 If you hit conflicts during cherry-pick, resolve them and run `git cherry-pick --continue`.
 
+## Releases
+
+Chamber tags a fork release whenever we cut a new version for consumption by [chamber/dbt-development](https://github.com/Chamber-Cardio/dbt-development). Tags follow the pattern `<upstream-version>+chamber.<N>`, where:
+
+- `<upstream-version>` is the Tuva release the fork is based on (e.g. `0.17.1`).
+- `+chamber.<N>` is a monotonically increasing Chamber build number against that upstream version, reset to `.0` whenever we sync to a new upstream release.
+
+All releases live at [Chamber-Cardio/tuva/releases](https://github.com/Chamber-Cardio/tuva/releases).
+
+### Cutting a release
+
+1. Merge all Chamber PRs into `chamber-dev`.
+2. On GitHub, draft a new release pointing at the tip of `chamber-dev`.
+3. Use the tag format above and title it `[<tag>] <short description>`.
+4. In the body, list each change with its SC ticket (where applicable) and PR number.
+5. Publish the release, then bump the pinned revision in `chamber/dbt-development/packages.yml`.
+
+### Release history
+
+| Release | Date | Based on upstream | Contents |
+|---|---|---|---|
+| [`0.17.1+chamber.1`](https://github.com/Chamber-Cardio/tuva/releases/tag/0.17.1%2Bchamber.1) | 2026-04-22 | `0.17.1` | CMS HCC snapshots bug fix (SC-4404, #6); Snapshot improvements (SC-4422, #7); README update (#8); ED encounters bug fix (#9) |
+
 ---
 ---
 <br><br><br>
