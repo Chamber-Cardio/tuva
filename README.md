@@ -49,6 +49,13 @@ git remote add upstream https://github.com/tuva-health/tuva.git
 
 Run this whenever the Tuva Project cuts a new release. We could do this anytime commits are added to tuva/main, but releases are generally more stable.
 
+In order to force push to the `main` and `chamber-dev` branches the following steps must be done:
+- Commit author must be added as an `admin` role under `Settings` > `Collaborators and teams`
+- Branch protection must be **temporarily** disabled by updating `Settings` > `Branches`
+  - Uncheck `Require a pull request before merging`
+  - Check `Allow force pushes`
+  - Select `Save changes`
+
 ```bash
 # 1. Pull the latest upstream changes
 git fetch upstream
@@ -56,7 +63,7 @@ git fetch upstream
 # 2. Fast-forward main to match upstream exactly
 git checkout main
 git merge upstream/main --ff-only
-git push origin main
+git push origin main --force-with-lease
 
 # 3. Rebase Chamber customizations onto the updated main
 git checkout chamber-dev
@@ -73,6 +80,11 @@ git pull --rebase origin chamber-dev
 ```
 
 > Use `--rebase` rather than plain `git pull` because `chamber-dev` is a rebasing branch. A regular merge pull will create unnecessary merge commits.
+
+After changes are complete, branch protection must be re-enabled by updating `Settings` > `Branches`
+  - Check `Require a pull request before merging`
+  - Uncheck `Allow force pushes`
+  - Select `Save changes`
 
 ## Contributing Chamber-Specific Changes
 
